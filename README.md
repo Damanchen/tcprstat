@@ -7,7 +7,7 @@
 
 -------------------------
 
-## install
+## 安装
 
 ```
 git clone https://github.com/Damanchen/tcprstat.git
@@ -18,21 +18,56 @@ autoreconf -fvi
 ./configure
 make & make install
 ```
+#### 编译说明
+依赖pthread线程静态库
+
+#### 异常处理
+如果出现如下异常，一般是系统netlink库引起的，卸载掉libnl即可
+
+```
+../libpcap/libpcap-1.1.1//libpcap.a(pcap-linux.o): In function nl80211_init': pcap-linux.c:(.text+0xd1d): undefined reference to nl_handle_alloc'
+pcap-linux.c:(.text+0xd31): undefined reference to genl_connect' pcap-linux.c:(.text+0xd3d): undefined reference to genl_ctrl_alloc_cache'
+pcap-linux.c:(.text+0xd59): undefined reference to genl_ctrl_search_by_name' pcap-linux.c:(.text+0xda1): undefined reference to nl_handle_destroy'
+pcap-linux.c:(.text+0xe0d): undefined reference to `nl_cache_free'
+*/
+```
 
 ## 命令行参数
 
-- -p: 端口 
-- -l: ip 
-- -o: 打印时延超过
-- -T: 参数指定的包的数量 
-- -T: 时延统计阈值，超过该时间的会通过tc打印超过该时延阈值的包个数 
+- -l: 指定以逗号分隔的用作本地ip地址的列表，用以取代默认的从操作系统获取的ip地址列表
+- -p: 指定用于捕获网络通信的 TCP 端口，如果未指定则捕获所有端口
+- -T: 时延统计阈值，超过该时间的会通过tc打印超过该时延阈值的包个数，单位为 ms
 - -o: 如果有包的时延超过阈值，则把该包的时间戳记录到该文件中，有助于分析报文 
-- -t: 统计打印时间间隔 
-- -n: 最多打印这么多次 
-- -r: 离线统计功能的抓包文件
+- -t: 在连续两行输出之间等待的时间间隔，以秒为单位
+- -n: 在程序退出前，需要执行迭代的次数；0 表示无限
+- -f: 控制输出的格式，详见下列说明
+- --[no-]header: 是否显示首行提示信息
+- -r: 从 pcap 文件中读取信息, 而不是从网络上实时获取
+- -help: 显示程序信息和用法
+- --version: --version
 
+### 输出格式定制
+| Format Code	|Header	|Default?	|Meaning|
+|--|--|--|--|
+%n	|count|	y	|在迭代期间完成的 request 个数
+%a	|avg	|y	|平均 |response 时间
+%s	|sum	|y	|response |时间的总和
+%x	|sqs	|	  |response 时间的平方和
+%m	|min	|y	|最小 response time
+%M	|max	|y	|最大 response time
+%h	|med	|y	|中间 response time
+%S	|stddev	|y	|response 时间值标准差
+%v	|var	|	|response 时间的总体方差
+%I	|iter#	|	|迭代次数
+%t	|elapsed	|	|从第一次迭代开始流逝的秒数
+%T	|timestamp	|y	|Unix 时间戳
+%%	|	|	|% 字符
+\t	|	|	|tab 字符
+\n	|	|	|换行字符
+95,99|	Adds a prefix	|y	|百分比指示符
 
-## 统计项说明
+## 输出统计项说明
+(*单位为 us*)
 
 - timestamp: 时间戳
 - count: 包总数
@@ -42,13 +77,13 @@ make & make install
 - med: 按照时延从小到达排序，最中间的时延值，例如100个包，则第50个包的时延为多少
 - stddev: 每个包的时延平方之和的平均值，和avg
 的平方的差值，该值可以反映时延波动情况
-- tc: 时延超过40ms的包个数，可以通过-T参数指定这个时间
-- 95_max: 按照时延从小到达排序，第95%的时延值，例如1000个请求，把他们的时延值排序，第%95的时延也就是第950个数组成员的时延值
-- 95_avg: 按照时延从小到达排序，时延值小的95%时延的平均值 95_std:按照时延从小到达排序，时延值小的95%的stddev值 
+- tc: 时延超过 x ms的包个数，可以通过-T参数指定这个时间
+- 95_max: 按照时延从小到达排序，第95%的时延值，例如1000个请求，把他们的时延值排序，第95%的时延也就是第950个数组成员的时延值
+- 95_avg: 按照时延从小到达排序，时延值小的95%时延的平均值 
+- 95_std: 按照时延从小到达排序，时延值小的95%的stddev值 
 - 99_max: 按照时延从小到达排序，第95%的时延值，例如1000个请求，把他们的时延值排序，第%95的时延也就是第990个数组成员的时延值
-- 99_avg: 按照时延从小到达排序，时延值小的99%时延的平均值 99_std:按照时延从小到达排序，时延值小的99%的stddev值
-
-
+- 99_avg: 按照时延从小到达排序，时延值小的99%时延的平均值 
+- 99_std:按照时延从小到达排序，时延值小的99%的stddev值
 
 
 ## 使用方法
@@ -62,6 +97,7 @@ tcprstat -p 1111 -l 10.2.x.x -t 1 -n 333333 -T 20
 ```
 tcprstat -p 1111 -l 10.2.x.x -t 1 -n 333333 -r xxx.pcap -T 10 -o timetamp.txt
 ```
+
 ## 示例
 ### 示例一：在线时延实时统计
 下面是统计10.12.1.1服务器上面，端口为12322的数据包的响应时间：
@@ -82,21 +118,7 @@ timestamp count max min avg med stddev tc 95_max 95_avg 95_std 99_max 99_avg 99_
 1483946802 4271 1828 39 196 193 102 1 362 183 83 476 192 91
 1483946803 3591 1678 42 206 202 110 5 374 192 86 511 201 94
 1483946804 4510 1889 32 195 190 101 2 351 183 78 457 191 87
-1483946805 4580 1877 42 192 185 100 3 349 179 78 460 188 86
-1483946806 4386 1999 37 192 187 105 4 352 179 83 462 187 91
-1483946807 4885 1821 32 183 180 97 1 333 171 80 421 179 87
-1483946808 4898 1898 40 193 192 98 2 344 180 80 446 189 86
-1483946809 4208 2015 41 197 194 105 2 357 185 81 462 193 90
-1483946810 3970 1101 42 196 192 96 2 353 184 79 448 192 88
-1483946811 4146 1252 41 197 193 100 2 353 184 82 456 192 90
-1483946812 3846 1024 41 201 197 101 2 361 189 82 456 197 91
-1483946813 3717 1428 42 207 206 101 4 369 195 83 457 203 92
-1483946814 3933 1534 43 199 194 102 3 353 186 82 446 194 90
-1483946815 4014 1625 37 199 198 98 1 352 187 81 446 195 89
-1483946816 3923 752 38 196 194 97 0 353 184 84 456 193 91
-1483946817 3993 2116 42 201 199 102 4 354 188 83 449 196 90
-1483946818 4005 1641 44 201 199 101 1 358 189 82 462 197 91
-1483946819 4246 1549 42 195 187 101 3 354 183 81 442 191 89
+
 
 tcprstat.log记录慢响应数据包的时间戳，delay_time单位为us：
 
@@ -105,41 +127,27 @@ timestamp: 1483946796.658649 delay_time: 1136(该数据报文产生时间戳是1
 timestamp: 1483946796.884682 delay_time: 1292
 timestamp: 1483946796.954704 delay_time: 1326
 timestamp: 1483946797.327451 delay_time: 1399
-timestamp: 1483946797.437754 delay_time: 1085
-timestamp: 1483946797.446523 delay_time: 1466
-timestamp: 1483946797.804099 delay_time: 1456
-timestamp: 1483946799.176803 delay_time: 1262
+...
 timestamp: 1483946799.643757 delay_time: 2499
 timestamp: 1483946800.97223 delay_time: 1151
 timestamp: 1483946800.103771 delay_time: 1164
 timestamp: 1483946800.120869 delay_time: 1315
 timestamp: 1483946800.388201 delay_time: 1557
 timestamp: 1483946800.655855 delay_time: 1191
-timestamp: 1483946800.872843 delay_time: 1153
-timestamp: 1483946800.963374 delay_time: 1871
-timestamp: 1483946801.9984 delay_time: 1973
+...
 timestamp: 1483946801.152817 delay_time: 1951
 timestamp: 1483946801.181594 delay_time: 1376
-timestamp: 1483946801.852420 delay_time: 1828
-timestamp: 1483946802.627323 delay_time: 1037
-timestamp: 1483946802.857785 delay_time: 1134
-timestamp: 1483946803.22034 delay_time: 1546
-timestamp: 1483946803.243553 delay_time: 1678
-timestamp: 1483946803.255998 delay_time: 1299
-timestamp: 1483946803.672670 delay_time: 1889
-timestamp: 1483946804.297324 delay_time: 1062
-timestamp: 1483946804.779147 delay_time: 1306
-timestamp: 1483946805.76330 delay_time: 1877
-timestamp: 1483946805.398714 delay_time: 1030
-timestamp: 1483946805.599980 delay_time: 1036
-timestamp: 1483946805.834343 delay_time: 1999
-timestamp: 1483946806.332698 delay_time: 1352
-timestamp: 1483946806.543452 delay_time: 1447
-timestamp: 1483946807.260249 delay_time: 1821
+...
 ```
 
 ### 示例二：在线抓包 + wireshark离线分析
-通过wireshark工具查看时间戳就可以确定出抓包文件中慢响应报文的时间戳，就可以快速定位慢响应报文，分析响应慢的原因 ???
+
+通过wireshark工具查看时间戳就可以确定出抓包文件中慢响应报文的时间戳，就可以快速定位慢响应报文，分析响应慢的原因 
+
+具体的用法是：
+1. 使用```tcpdump```对网卡和端口进行抓包，并把数据保存到 test.pcap 文件中；
+2. 使用```tcprstat```对抓到的包进行过滤，过滤出时延超过 x ms的数据，并保存到 tcprstat.log 文件中，此文件中有记录时间戳；
+3. 使用```wireshark```打开 test.pcap 文件，按下 ctrl+f，匹配规则为“分组详情”+“宽窄”+“字符串”，在输入框输入 ```tcprstat.log``` 文件里记录的时间戳，就可以找到对应的数据包了。
 
 ```
 [root@s10-12-1-1 test]# tcpdump -i bond0 port 15211 -w test.pcap
@@ -168,18 +176,7 @@ timestamp: 1483947287.794503 delay_time: 1456
 timestamp: 1483947287.828082 delay_time: 1333
 ```
 
-## 编译
+## 目前存在的问题
 
-#### 编译说明:
-依赖pthread线程静态库
-
-#### 异常处理
-如果出现如下异常，一般是系统netlink库引起的，卸载掉libnl即可
-
-```
-../libpcap/libpcap-1.1.1//libpcap.a(pcap-linux.o): In function nl80211_init': pcap-linux.c:(.text+0xd1d): undefined reference to nl_handle_alloc'
-pcap-linux.c:(.text+0xd31): undefined reference to genl_connect' pcap-linux.c:(.text+0xd3d): undefined reference to genl_ctrl_alloc_cache'
-pcap-linux.c:(.text+0xd59): undefined reference to genl_ctrl_search_by_name' pcap-linux.c:(.text+0xda1): undefined reference to nl_handle_destroy'
-pcap-linux.c:(.text+0xe0d): undefined reference to `nl_cache_free'
-*/
-```
+### 意外退出
+tcprstst会不定期意外退出，不管是该升级版本，还是之前的老版本，都存在这个问题。

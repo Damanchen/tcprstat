@@ -133,14 +133,16 @@ process_ip(pcap_t *dev, const struct ip *ip, struct timeval tv) {
         if (datalen == 0)
             break;
 
-        if (incoming) { //½øÈëÏµÍ³µÄÊ±¼ätv
+        //è¿›å…¥ç³»ç»Ÿçš„æ—¶é—´tv
+        if (incoming) { 
             lport = dport;
             rport = sport;
             
             inbound(tv, ip->ip_dst, ip->ip_src, lport, rport);
             
         }
-        else {//³öÏµÍ³µÄÊ±¼ätv¼ÇÂ¼µ½hashÖÐ
+        // å‡ºç³»ç»Ÿçš„æ—¶é—´tvè®°å½•åˆ°hashä¸­
+        else {
             lport = sport;
             rport = dport;
             
